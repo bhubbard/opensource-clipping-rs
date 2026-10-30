@@ -1,0 +1,32 @@
+[package]
+name = "opensource-clipping"
+version = "0.1.0"
+edition = "2021"
+authors = ["Brandon Hubbard <bhubbard@users.noreply.github.com>"]
+description = "High-performance, pure Rust port of NaufalRizqullah/opensource-clipping — AI auto-clipper turning long-form videos & podcasts into viral shorts with smart face-tracking, kinetic karaoke subtitles, audio ducking, and auto-hook curation."
+license = "MIT"
+repository = "https://github.com/bhubbard/opensource-clipping-rs"
+homepage = "https://github.com/bhubbard/opensource-clipping-rs"
+keywords = ["video-clipping", "shorts", "subtitles", "whisper", "video-editing"]
+categories = ["multimedia::video", "multimedia::audio", "command-line-utilities"]
+
+[dependencies]
+clap = { version = "4.5", features = ["derive", "cargo", "env"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+regex = "1.11"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tempfile = "3.13"
+
+[[bin]]
+name = "clipping"
+path = "src/main.rs"
+
+[lib]
+name = "opensource_clipping"
+path = "src/lib.rs"

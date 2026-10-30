@@ -1,0 +1,8 @@
+/target
+**/*.rs.bk
+Cargo.lock
+.DS_Store
+*.mp4
+*.ass
+*.srt
+*.json
