@@ -134,6 +134,50 @@ impl SubtitleEngine {
 
         ass
     }
+
+    /// Parses inline SSA/ASS override tags (`{\b1}`, `{\pos(x,y)}`, `{\fad(in,out)}`) from a dialogue line.
+    pub fn parse_override_tags(line: &str) -> (bool, Option<(f32, f32)>, Option<(u32, u32)>) {
+        let bold = line.contains("\\b1");
+        let pos = line.find("\\pos(").and_then(|idx| {
+            let rem = &line[idx + 5..];
+            let end = rem.find(')')?;
+            let mut parts = rem[..end].split(',');
+            let x = parts.next()?.trim().parse::<f32>().ok()?;
+            let y = parts.next()?.trim().parse::<f32>().ok()?;
+            Some((x, y))
+        });
+        let fad = line.find("\\fad(").and_then(|idx| {
+            let rem = &line[idx + 5..];
+            let end = rem.find(')')?;
+            let mut parts = rem[..end].split(',');
+            let f_in = parts.next()?.trim().parse::<u32>().ok()?;
+            let f_out = parts.next()?.trim().parse::<u32>().ok()?;
+            Some((f_in, f_out))
+        });
+        (bold, pos, fad)
+    }
+
+    /// Generates a WGPU compute shader (WGSL) for zero-copy GPU glyph outline expansion and drop-shadow composition (`libass` / `subtitles-rs`).
+    pub fn wgsl_outline_shadow_shader(outline_px: f32, shadow_px: f32) -> String {
+        format!(
+            "@group(0) @binding(0) var glyph_sdf: texture_2d<f32>;\n\
+             @group(0) @binding(1) var out_frame: texture_storage_2d<rgba8unorm, write>;\n\
+             const OUTLINE_RADIUS: f32 = {:.2};\n\
+             const SHADOW_OFFSET: f32 = {:.2};\n\
+             @compute @workgroup_size(8, 8)\n\
+             fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{\n\
+                 let coord = vec2<i32>(gid.xy);\n\
+                 let dist = textureLoad(glyph_sdf, coord, 0).r;\n\
+                 let fill_alpha = clamp(0.5 - dist, 0.0, 1.0);\n\
+                 let outline_alpha = clamp((OUTLINE_RADIUS + 0.5) - dist, 0.0, 1.0);\n\
+                 let shadow_dist = textureLoad(glyph_sdf, coord - vec2<i32>(i32(SHADOW_OFFSET)), 0).r;\n\
+                 let shadow_alpha = clamp(0.5 - shadow_dist, 0.0, 1.0) * 0.65;\n\
+                 let col = vec4<f32>(fill_alpha, fill_alpha, fill_alpha, max(outline_alpha, shadow_alpha));\n\
+                 textureStore(out_frame, coord, col);\n\
+             }}\n",
+            outline_px, shadow_px
+        )
+    }
 }
 
 #[cfg(test)]
