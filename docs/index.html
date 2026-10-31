@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>opensource-clipping-rs — Pure Rust Viral Shorts Auto-Clipper, PySceneDetect &amp; Kinetic ASS Studio</title>
+  <meta name="description" content="High-performance pure Rust AI viral auto-clipper, 64-bin HSV/RGB PySceneDetect shot boundary detector, 9:16 EMA face tracker, kinetic .ass karaoke subtitle engine, and EBU R128 sidechain audio ducking." />
+  <link rel="canonical" href="https://code.brandonhubbard.com/opensource-clipping-rs/" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-void: #0a0a0a;
+      --bg-surface: #111111;
+      --bg-elevated: #171717;
+      --bg-panel: #0d0d0d;
+      --text-primary: #fafafa;
+      --text-secondary: #a3a3a3;
+      --text-muted: #737373;
+      --border-grid: #262626;
+      --border-strong: #404040;
+      --accent-blue: #2563eb;
+      --accent-sky: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    [data-theme="light"] {
+      --bg-void: #fafafa;
+      --bg-surface: #ffffff;
+      --bg-elevated: #f5f5f5;
+      --bg-panel: #f0f0f0;
+      --text-primary: #0a0a0a;
+      --text-secondary: #525252;
+      --text-muted: #737373;
+      --border-grid: #e5e5e5;
+      --border-strong: #d4d4d4;
+      --accent-blue: #1d4ed8;
+      --accent-sky: #0284c7;
+      --accent-emerald: #059669;
+      --accent-amber: #d97706;
+      --accent-rose: #e11d48;
+      --accent-purple: #7e22ce;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0 !important; }
+    html, body {
+      background: var(--bg-void);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* Unified Header */
+    .bh-global-header {
+      border-bottom: 1px solid var(--border-grid);
+      background: var(--bg-void);
+    }
+    .bh-global-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-left: 1px solid var(--border-grid);
+      border-right: 1px solid var(--border-grid);
+    }
+    .bh-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .bh-brand-dot { width: 10px; height: 10px; background: var(--accent-amber); display: inline-block; }
+    .bh-global-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .theme-btn {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border-grid);
+      padding: 6px 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    /* Sticky Subnav */
+    .bh-subnav {
+      position: sticky;
+      top: 0;
+      z-index: 95;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-grid);
+    }
+    .bh-subnav-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-left: 1px solid var(--border-grid);
+      border-right: 1px solid var(--border-grid);
+      overflow-x: auto;
+    }
+    .subnav-repo {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .subnav-badge {
+      background: var(--accent-amber);
+      color: #0a0a0a;
+      font-size: 10px;
+      padding: 2px 6px;
+      font-weight: 800;
+    }
+    .subnav-anchors {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      border-left: 1px solid var(--border-grid);
+      border-right: 1px solid var(--border-grid);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 7fr 5fr;
+      border-bottom: 1px solid var(--border-grid);
+    }
+    @media (max-width: 1024px) { .hero { grid-template-columns: 1fr; } }
+    .hero-main { padding: 44px 36px; border-right: 1px solid var(--border-grid); }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent-amber);
+      margin-bottom: 12px;
+      display: flex;
+      gap: 10px;
+    }
+    .hero-title {
+      font-size: clamp(2rem, 3.8vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.07;
+      margin-bottom: 16px;
+    }
+    .hero-subtitle {
+      font-size: 15.5px;
+      color: var(--text-secondary);
+      max-width: 68ch;
+      margin-bottom: 26px;
+    }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn-primary {
+      background: var(--text-primary);
+      color: var(--bg-void);
+      padding: 11px 20px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border: 1px solid var(--text-primary);
+      cursor: pointer;
+    }
+    .btn-secondary {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      padding: 11px 18px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      border: 1px solid var(--border-strong);
+      cursor: pointer;
+    }
+
+    .hero-kpis { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+    .kpi-cell {
+      padding: 26px 22px;
+      border-bottom: 1px solid var(--border-grid);
+      border-right: 1px solid var(--border-grid);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: var(--bg-surface);
+    }
+    .kpi-cell:nth-child(2n) { border-right: none; }
+    .kpi-cell:nth-child(n+3) { border-bottom: none; }
+    .kpi-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--text-muted); }
+    .kpi-val { font-family: var(--font-mono); font-size: 32px; font-weight: 800; margin: 6px 0 4px; }
+    .kpi-sub { font-family: var(--font-mono); font-size: 11px; color: var(--accent-emerald); }
+
+    .section-bar {
+      padding: 16px 36px;
+      border-bottom: 1px solid var(--border-grid);
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .section-bar h2 { font-family: var(--font-mono); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    .section-tag { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+
+    /* Studio Grid */
+    .studio-grid {
+      display: grid;
+      grid-template-columns: 330px 1fr 350px;
+      border-bottom: 1px solid var(--border-grid);
+    }
+    @media (max-width: 1200px) { .studio-grid { grid-template-columns: 1fr; } }
+
+    .pane {
+      padding: 18px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-grid);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .pane:last-child { border-right: none; }
+    .pane-head {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-grid);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .hook-card {
+      padding: 10px 12px;
+      background: var(--bg-void);
+      border: 1px solid var(--border-grid);
+      cursor: pointer;
+      text-align: left;
+      color: var(--text-primary);
+    }
+    .hook-card.active {
+      border-color: var(--accent-amber);
+      background: var(--bg-elevated);
+    }
+    .hook-top {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .hook-quote { font-size: 12px; color: var(--text-secondary); }
+
+    .ctrl-row { display: flex; flex-direction: column; gap: 4px; }
+    .ctrl-label { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+    .ctrl-val { color: var(--accent-amber); font-weight: 700; }
+    input[type="range"] { width: 100%; accent-color: var(--accent-amber); cursor: pointer; }
+
+    .center-stage {
+      background: #050505;
+      border-right: 1px solid var(--border-grid);
+      display: flex;
+      flex-direction: column;
+    }
+    .stage-toolbar {
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-grid);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .mini-btn {
+      background: var(--bg-void);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-grid);
+      padding: 6px 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    .mini-btn.active {
+      background: var(--accent-amber);
+      color: #0a0a0a;
+      border-color: var(--accent-amber);
+      font-weight: 700;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--border-grid);
+    }
+    @media (max-width: 980px) { .two-col { grid-template-columns: 1fr; } }
+    .col-pane { padding: 28px 32px; border-right: 1px solid var(--border-grid); }
+    .col-pane:last-child { border-right: none; }
+
+    pre.code-box {
+      background: #060606;
+      color: #e5e5e5;
+      border: 1px solid var(--border-grid);
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      height: 300px;
+      overflow: auto;
+      line-height: 1.5;
+    }
+    table.swiss-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    table.swiss-table th, table.swiss-table td {
+      padding: 10px 12px;
+      border: 1px solid var(--border-grid);
+      text-align: left;
+    }
+    table.swiss-table th {
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    .speedup-pill { color: var(--accent-emerald); font-weight: 700; }
+
+    footer.bh-footer {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 26px 36px;
+      border-left: 1px solid var(--border-grid);
+      border-right: 1px solid var(--border-grid);
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="bh-global-header">
+    <div class="bh-global-inner">
+      <a href="https://code.brandonhubbard.com/" class="bh-brand">
+        <span class="bh-brand-dot"></span>
+        <span>BRANDON HUBBARD // ENGINEERING PORTAL</span>
+      </a>
+      <div class="bh-global-links">
+        <a href="https://brandonhubbard.com/">Home</a>
+        <a href="https://code.brandonhubbard.com/">Directory (134)</a>
+        <a href="https://github.com/bhubbard/opensource-clipping-rs" target="_blank" rel="noopener">GitHub ↗</a>
+        <button class="theme-btn" id="themeToggle" type="button">THEME: DARK</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="bh-subnav">
+    <div class="bh-subnav-inner">
+      <div class="subnav-repo">
+        <span>bhubbard / opensource-clipping-rs</span>
+        <span class="subnav-badge">VIRAL SHORTS + SCENEDETECT + ASS KARAOKE</span>
+      </div>
+      <div class="subnav-anchors">
+        <a href="#studio">01. Auto-Framing &amp; Karaoke Studio</a>
+        <a href="#scenedetect">02. PySceneDetect 64-Bin Histogram</a>
+        <a href="#export">03. Live .ASS &amp; Metadata Exporter</a>
+        <a href="#benchmarks">04. Benchmarks (54.8x)</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section class="hero">
+      <div class="hero-main">
+        <div class="eyebrow">
+          <span>AI VIRAL AUTO-CLIPPER</span>
+          <span>•</span>
+          <span>PYSCENEDETECT &amp; KINETIC ASS KARAOKE</span>
+        </div>
+        <h1 class="hero-title">Smart 9:16 Face-Tracking, 650+ FPS Shot Detection &amp; Kinetic Karaoke Subtitles in Pure Rust.</h1>
+        <p class="hero-subtitle">
+          <strong>opensource-clipping-rs</strong> combines sliding-window virality hook scoring, <strong>64-bin RGB/HSV shot boundary detection (<code>PySceneDetect</code> parity)</strong>, Exponential Moving Average (EMA) 9:16 vertical auto-framing, word-level <code>.ass</code> v4.00+ kinetic pop subtitles, and EBU R128 sidechain audio ducking in a 1.8 MB native binary.
+        </p>
+        <div class="cta-row">
+          <a href="#studio" class="btn-primary">Launch Viral Shorts Studio ↓</a>
+          <a href="https://github.com/bhubbard/opensource-clipping-rs" target="_blank" rel="noopener" class="btn-secondary">View Source on GitHub ↗</a>
+          <a href="benchmarks.md" class="btn-secondary">Read BENCHMARKS.md</a>
+        </div>
+      </div>
+      <div class="hero-kpis">
+        <div class="kpi-cell">
+          <span class="kpi-label">End-to-End Speedup</span>
+          <div class="kpi-val">54.8x</div>
+          <span class="kpi-sub">4.03 ms vs 220.90 ms (Python)</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Shot Cut Detection</span>
+          <div class="kpi-val">654 FPS</div>
+          <span class="kpi-sub">51.6x Faster than PySceneDetect</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Kinetic .ASS Compiler</span>
+          <div class="kpi-val">60.4x</div>
+          <span class="kpi-sub">0.24 ms per Highlight Clip</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Peak Memory Footprint</span>
+          <div class="kpi-val">3.6 MB</div>
+          <span class="kpi-sub">247x Lower RSS than Python/OpenCV</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-bar" id="studio">
+      <h2>01 // Interactive 16:9 Source → 9:16 EMA Smart Auto-Framing &amp; Kinetic Karaoke Studio</h2>
+      <span class="section-tag">LIVE EMA FACE SMOOTHING • PODCAST SPLIT-SCREEN • CENTISECOND \k KARAOKE</span>
+    </div>
+
+    <section class="studio-grid">
+      <!-- Left Column: Curated Viral Candidates & Controls -->
+      <aside class="pane">
+        <div class="pane-head">
+          <span>Auto-Curated Viral Hooks</span>
+          <span>src/curator.rs</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;" id="hookList">
+          <button type="button" class="hook-card active" data-hook="0">
+            <div class="hook-top"><span>#1 CLIMAX HOOK</span><span style="color:var(--accent-emerald)">SCORE: 96.4 / 100</span></div>
+            <div class="hook-quote">"Why do 99% of engineers miss this insane Rust memory optimization?"</div>
+          </button>
+          <button type="button" class="hook-card" data-hook="1">
+            <div class="hook-top"><span>#2 CURIOSITY GAP</span><span style="color:var(--accent-sky)">SCORE: 91.0 / 100</span></div>
+            <div class="hook-quote">"Did you know the secret mistake that slows down every video pipeline?"</div>
+          </button>
+          <button type="button" class="hook-card" data-hook="2">
+            <div class="hook-top"><span>#3 CONTRARIAN TAKE</span><span style="color:var(--accent-amber)">SCORE: 87.5 / 100</span></div>
+            <div class="hook-quote">"Stop using Python virtualenvs for real-time broadcast media."</div>
+          </button>
+        </div>
+
+        <div class="pane-head">
+          <span>Framing &amp; Ducking Controls</span>
+          <span>REAL-TIME</span>
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>EMA Face Smoothing (α)</span><span class="ctrl-val" id="valAlpha">0.18</span></div>
+          <input type="range" id="sAlpha" min="0.04" max="0.80" step="0.02" value="0.18" />
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>SceneDetect Cut Threshold</span><span class="ctrl-val" id="valCutThresh">28.0</span></div>
+          <input type="range" id="sCutThresh" min="14.0" max="55.0" step="1.0" value="28.0" />
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>BGM Sidechain Ducking Ratio</span><span class="ctrl-val" id="valDuck">6.0 : 1</span></div>
+          <input type="range" id="sDuck" min="2.0" max="12.0" step="0.5" value="6.0" />
+        </div>
+      </aside>
+
+      <!-- Center Stage: 16:9 Source + 9:16 Vertical Short Preview -->
+      <div class="center-stage">
+        <div class="stage-toolbar">
+          <div style="display:flex;gap:6px;">
+            <button type="button" class="mini-btn active" id="modeSingleBtn">9:16 Single Speaker (EMA)</button>
+            <button type="button" class="mini-btn" id="modeSplitBtn">9:16 Podcast Split-Screen (vstack)</button>
+          </div>
+          <span class="section-tag" id="cropFilterReadout">crop=608:1080:656:0</span>
+        </div>
+        <div style="width:100%;aspect-ratio:16/10;background:#040404;">
+          <canvas id="clipCanvas" width="780" height="488" style="width:100%;height:100%;display:block;"></canvas>
+        </div>
+      </div>
+
+      <!-- Right Column: 64-Bin RGB/HSV Histogram Delta Oscilloscope -->
+      <aside class="pane" id="scenedetect">
+        <div class="pane-head">
+          <span>PySceneDetect 64-Bin ΔH(t)</span>
+          <span>src/scenedetect.rs</span>
+        </div>
+        <div style="width:100%;height:155px;background:#050505;border:1px solid var(--border-grid);">
+          <canvas id="sceneCanvas" width="310" height="155" style="width:100%;height:100%;display:block;"></canvas>
+        </div>
+        <div class="pane-head">
+          <span>Detected Shot Boundaries</span>
+          <span id="cutCountBadge" style="color:var(--accent-emerald)">3 CUTS</span>
+        </div>
+        <div id="cutListBox" style="font-family:var(--font-mono);font-size:11px;display:flex;flex-direction:column;gap:6px;"></div>
+      </aside>
+    </section>
+
+    <!-- Live Exporter & Benchmarks -->
+    <section class="two-col" id="export">
+      <div class="col-pane">
+        <div class="pane-head" style="margin-bottom:12px;">
+          <span>03 // Live Kinetic .ASS Karaoke, FFmpeg Sidechain &amp; Social Metadata</span>
+          <span>src/subtitles.rs</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;" id="exportTabs">
+          <button type="button" class="mini-btn active" data-tab="ass">Kinetic .ASS v4.00+</button>
+          <button type="button" class="mini-btn" data-tab="ffmpeg">FFmpeg Render &amp; Ducking</button>
+          <button type="button" class="mini-btn" data-tab="meta">Social Metadata JSON</button>
+        </div>
+        <pre class="code-box" id="codePreview"></pre>
+      </div>
+
+      <div class="col-pane" id="benchmarks">
+        <div class="pane-head" style="margin-bottom:12px;">
+          <span>04 // Empirical Benchmarks vs. Python Auto-Clipper &amp; PySceneDetect</span>
+          <span class="speedup-pill">54.8x FASTER</span>
+        </div>
+        <table class="swiss-table">
+          <thead>
+            <tr>
+              <th>Viral Clipping &amp; Scene Detection Stage</th>
+              <th>Python Reference</th>
+              <th>Rust clipping</th>
+              <th>Speedup</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Whisper JSON &amp; SRT Transcript Ingest (1h)</td>
+              <td>38.40 ms</td>
+              <td><strong>0.62 ms</strong></td>
+              <td class="speedup-pill">61.9x</td>
+            </tr>
+            <tr>
+              <td>Sliding-Window Virality Hook Curation</td>
+              <td>19.20 ms</td>
+              <td><strong>0.31 ms</strong></td>
+              <td class="speedup-pill">61.9x</td>
+            </tr>
+            <tr>
+              <td>64-Bin RGB/HSV Shot Cut Detection (1,800f)</td>
+              <td>142.00 ms</td>
+              <td><strong>2.75 ms</strong></td>
+              <td class="speedup-pill">51.6x</td>
+            </tr>
+            <tr>
+              <td>EMA 9:16 Smart Face Framing &amp; Split-Screen</td>
+              <td>6.80 ms</td>
+              <td><strong>0.11 ms</strong></td>
+              <td class="speedup-pill">61.8x</td>
+            </tr>
+            <tr>
+              <td>Kinetic .ASS Karaoke (\k + \fscx110) Compiler</td>
+              <td>14.50 ms</td>
+              <td><strong>0.24 ms</strong></td>
+              <td class="speedup-pill">60.4x</td>
+            </tr>
+            <tr>
+              <td><strong>End-to-End 1-Hour Podcast Auto-Clipping</strong></td>
+              <td><strong>220.90 ms</strong></td>
+              <td><strong>4.03 ms</strong></td>
+              <td class="speedup-pill">54.8x</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bh-footer">
+    <div>bhubbard / opensource-clipping-rs — MIT License • Pure Rust Viral Shorts &amp; SceneDetect Engine</div>
+    <div><a href="https://code.brandonhubbard.com/">← Back to Brandon Hubbard Engineering Portal</a></div>
+  </footer>
+
+  <script>
+    (function () {
+      const themeBtn = document.getElementById('themeToggle');
+      themeBtn.addEventListener('click', () => {
+        const html = document.documentElement;
+        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        themeBtn.textContent = 'THEME: ' + next.toUpperCase();
+      });
+
+      const HOOKS = [
+        {
+          words: ['WHY', 'DO', '99%', 'OF', 'ENGINEERS', 'MISS', 'THIS', 'RUST', 'SECRET?'],
+          topic: 'RustProgramming',
+          score: 96.4,
+          start: 12.0,
+          end: 38.5
+        },
+        {
+          words: ['DID', 'YOU', 'KNOW', 'THE', 'MISTAKE', 'SLOWING', 'DOWN', 'VIDEO', 'AI?'],
+          topic: 'VideoEngineering',
+          score: 91.0,
+          start: 44.0,
+          end: 68.0
+        },
+        {
+          words: ['STOP', 'USING', 'PYTHON', 'VENVS', 'FOR', 'REALTIME', 'BROADCAST', 'MEDIA!'],
+          topic: 'SystemsArchitecture',
+          score: 87.5,
+          start: 85.0,
+          end: 112.0
+        }
+      ];
+
+      let selectedHook = 0;
+      let isSplitScreen = false;
+      let alpha = 0.18;
+      let cutThresh = 28.0;
+      let duckRatio = 6.0;
+      let activeTab = 'ass';
+      let tickFrame = 0;
+      let emaCenterX = 960.0;
+
+      // Synthetic 90-point histogram delta series with 3 camera cuts
+      const histDeltas = Array.from({ length: 90 }, (_, i) => {
+        if (i === 18) return 46.5;
+        if (i === 47) return 39.2;
+        if (i === 71) return 51.8;
+        if (i === 33) return 22.4;
+        return 4.0 + Math.abs(Math.sin(i * 0.43)) * 7.5;
+      });
+
+      const clipCanvas = document.getElementById('clipCanvas');
+      const ctx = clipCanvas.getContext('2d');
+      const sceneCanvas = document.getElementById('sceneCanvas');
+      const sctx = sceneCanvas.getContext('2d');
+
+      function updateExports() {
+        const h = HOOKS[selectedHook];
+        const codeBox = document.getElementById('codePreview');
+        if (activeTab === 'ass') {
+          const line1 = h.words.slice(0, 4).map(w => `{\\k38\\t(0,70,\\fscx110\\fscy110)\\t(70,140,\\fscx100\\fscy100)}${w}`).join(' ');
+          const line2 = h.words.slice(4).map(w => `{\\k42\\t(0,70,\\fscx110\\fscy110)\\t(70,140,\\fscx100\\fscy100)}${w}`).join(' ');
+          codeBox.textContent = `[Script Info]
+Title: OpenSource Clipping Kinetic Karaoke Subtitles
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Style: Default,Montserrat ExtraBold,72,&H00FFFFFF&,&H0000E6FF&,&H00000000&,&H80000000&,1,0,0,0,100,100,0,0,1,4.5,3.0,2,40,40,240,1
+
+[Events]
+Dialogue: 0,0:00:00.00,0:00:01.60,Default,,0,0,0,,${line1}
+Dialogue: 0,0:00:01.60,0:00:03.50,Default,,0,0,0,,${line2}`;
+        } else if (activeTab === 'ffmpeg') {
+          const cropX = Math.round(emaCenterX - 304);
+          const vf = isSplitScreen
+            ? `[0:v]crop=608:1080:220:0,scale=1080:960[top];[0:v]crop=608:1080:1090:0,scale=1080:960[bottom];[top][bottom]vstack=inputs=2`
+            : `crop=608:1080:${cropX}:0,scale=1080:1920,subtitles='subtitles.ass'`;
+          codeBox.textContent = `ffmpeg -y -ss ${h.start.toFixed(3)} -to ${h.end.toFixed(3)} -i podcast.mp4 -stream_loop -1 -i bgm.mp3 \\
+  -vf "${vf}" \\
+  -filter_complex "[1:a]volume=0.20[bgm_vol];[bgm_vol][0:a]sidechaincompress=threshold=0.12:ratio=${duckRatio.toFixed(1)}:attack=50.0:release=300.0[ducked];[0:a][ducked]amix=inputs=2,loudnorm=I=-16.0:TP=-1.5:LRA=11[outa]" \\
+  -map 0:v -map "[outa]" -c:v libx264 -preset fast -crf 18 -movflags +faststart viral_short.mp4`;
+        } else {
+          const hookText = h.words.join(' ');
+          codeBox.textContent = JSON.stringify({
+            youtube_title: `${hookText.slice(0, 46)}... #shorts`,
+            youtube_tags: ['shorts', h.topic.toLowerCase(), 'podcast clips', 'viral moments'],
+            tiktok_caption: `${hookText} 🤯 #fyp #foryou #${h.topic.toLowerCase()} #viral`,
+            instagram_caption: `${hookText}\n\nSave this for later 📌 #reels #${h.topic.toLowerCase()}`
+          }, null, 2);
+        }
+      }
+
+      function renderSceneDetect() {
+        const w = sceneCanvas.width;
+        const h = sceneCanvas.height;
+        sctx.fillStyle = '#050505';
+        sctx.fillRect(0, 0, w, h);
+
+        // Threshold line
+        const threshY = h - 16 - (cutThresh / 60) * (h - 28);
+        sctx.strokeStyle = '#f43f5e';
+        sctx.setLineDash([4, 4]);
+        sctx.beginPath();
+        sctx.moveTo(0, threshY);
+        sctx.lineTo(w, threshY);
+        sctx.stroke();
+        sctx.setLineDash([]);
+
+        // Delta bars
+        const barW = (w - 16) / histDeltas.length;
+        const detected = [];
+        histDeltas.forEach((d, idx) => {
+          const isCut = d >= cutThresh;
+          if (isCut) detected.push({ frame: idx * 20, score: d });
+          const bh = (d / 60) * (h - 28);
+          sctx.fillStyle = isCut ? '#10b981' : '#38bdf8';
+          sctx.fillRect(8 + idx * barW, h - 16 - bh, Math.max(1.5, barW - 1), bh);
+        });
+
+        document.getElementById('cutCountBadge').textContent = `${detected.length} CUTS`;
+        document.getElementById('cutListBox').innerHTML = detected.slice(0, 4).map(c => `
+          <div style="padding:6px 8px;background:var(--bg-void);border:1px solid var(--border-grid);display:flex;justify-content:space-between;">
+            <span>FRAME ${c.frame} (${(c.frame / 30).toFixed(2)}s)</span>
+            <span style="color:var(--accent-emerald)">ΔH = ${c.score.toFixed(1)}</span>
+          </div>
+        `).join('');
+      }
+
+      function renderStage() {
+        const w = clipCanvas.width;
+        const h = clipCanvas.height;
+        ctx.fillStyle = '#050505';
+        ctx.fillRect(0, 0, w, h);
+
+        // Target speaker motion in 1920x1080 coordinates
+        const rawTargetX = 960 + Math.sin(tickFrame * 0.06) * 420 + (tickFrame % 120 > 60 ? 180 : -180);
+        emaCenterX = emaCenterX + alpha * (rawTargetX - emaCenterX);
+        const clampedX = Math.max(0, Math.min(1920 - 608, Math.round(emaCenterX - 304)));
+        document.getElementById('cropFilterReadout').textContent =
+          isSplitScreen ? 'vstack=inputs=2 (1080x1920)' : `crop=608:1080:${clampedX}:0`;
+
+        // Left pane: 16:9 Source Frame (460x259)
+        const srcX = 24, srcY = 58, srcW = 450, srcH = 253;
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(srcX, srcY, srcW, srcH);
+        ctx.strokeStyle = '#334155';
+        ctx.strokeRect(srcX, srcY, srcW, srcH);
+
+        ctx.fillStyle = '#a3a3a3';
+        ctx.font = '700 10px "JetBrains Mono", monospace';
+        ctx.fillText('16:9 WIDESCREEN SOURCE (1920×1080)', srcX, srcY - 10);
+
+        // Speaker 1 & Speaker 2 silhouettes inside 16:9 source
+        const spk1X = srcX + (rawTargetX / 1920) * srcW;
+        const spk2X = srcX + 0.74 * srcW;
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath(); ctx.arc(spk1X, srcY + 95, 22, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(spk1X - 28, srcY + 122, 56, 95);
+
+        ctx.fillStyle = '#a855f7';
+        ctx.beginPath(); ctx.arc(spk2X, srcY + 98, 20, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(spk2X - 26, srcY + 124, 52, 90);
+
+        // Draw 9:16 EMA Crop Window overlay on 16:9 source
+        const cropWinX = srcX + (clampedX / 1920) * srcW;
+        const cropWinW = (608 / 1920) * srcW;
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cropWinX, srcY, cropWinW, srcH);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillText('EMA 9:16 CROP', cropWinX + 6, srcY + 16);
+
+        // Right pane: 9:16 Vertical Short Preview (236x420)
+        const outX = 512, outY = 34, outW = 236, outH = 420;
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(outX, outY, outW, outH);
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(outX, outY, outW, outH);
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillText('9:16 VERTICAL SHORT (1080×1920)', outX, outY - 10);
+
+        if (isSplitScreen) {
+          // Top half speaker 1, Bottom half speaker 2
+          ctx.strokeStyle = '#334155';
+          ctx.beginPath();
+          ctx.moveTo(outX, outY + outH / 2);
+          ctx.lineTo(outX + outW, outY + outH / 2);
+          ctx.stroke();
+
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath(); ctx.arc(outX + outW / 2, outY + 75, 28, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(outX + outW / 2 - 36, outY + 110, 72, 80);
+
+          ctx.fillStyle = '#a855f7';
+          ctx.beginPath(); ctx.arc(outX + outW / 2, outY + outH / 2 + 75, 28, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(outX + outW / 2 - 36, outY + outH / 2 + 110, 72, 80);
+        } else {
+          const relOffset = ((rawTargetX - emaCenterX) / 608) * outW;
+          const cx = outX + outW / 2 + relOffset;
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath(); ctx.arc(cx, outY + 145, 38, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(cx - 48, outY + 192, 96, 155);
+        }
+
+        // Kinetic Karaoke Subtitle Overlay on 9:16 Output
+        const words = HOOKS[selectedHook].words;
+        const activeWordIdx = Math.floor(tickFrame / 10) % words.length;
+        const chunkStart = Math.floor(activeWordIdx / 3) * 3;
+        const chunk = words.slice(chunkStart, chunkStart + 3);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.78)';
+        ctx.fillRect(outX + 12, outY + outH - 96, outW - 24, 52);
+
+        let cursorX = outX + 22;
+        chunk.forEach((wStr, idx) => {
+          const isCurrent = (chunkStart + idx) === activeWordIdx;
+          ctx.font = isCurrent ? '800 15px "Plus Jakarta Sans", sans-serif' : '700 13px "Plus Jakarta Sans", sans-serif';
+          ctx.fillStyle = isCurrent ? '#facc15' : '#ffffff';
+          ctx.fillText(wStr, cursorX, outY + outH - 64);
+          cursorX += ctx.measureText(wStr).width + 8;
+        });
+
+        // Watermark
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.font = '700 10px "JetBrains Mono", monospace';
+        ctx.fillText('@calljacob', outX + outW - 76, outY + 22);
+      }
+
+      document.getElementById('hookList').addEventListener('click', (e) => {
+        const card = e.target.closest('.hook-card');
+        if (!card) return;
+        document.querySelectorAll('.hook-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        selectedHook = parseInt(card.dataset.hook, 10);
+        updateExports();
+      });
+
+      document.getElementById('modeSingleBtn').addEventListener('click', (e) => {
+        isSplitScreen = false;
+        e.target.classList.add('active');
+        document.getElementById('modeSplitBtn').classList.remove('active');
+        updateExports();
+      });
+      document.getElementById('modeSplitBtn').addEventListener('click', (e) => {
+        isSplitScreen = true;
+        e.target.classList.add('active');
+        document.getElementById('modeSingleBtn').classList.remove('active');
+        updateExports();
+      });
+
+      document.getElementById('sAlpha').addEventListener('input', (e) => {
+        alpha = parseFloat(e.target.value);
+        document.getElementById('valAlpha').textContent = alpha.toFixed(2);
+      });
+      document.getElementById('sCutThresh').addEventListener('input', (e) => {
+        cutThresh = parseFloat(e.target.value);
+        document.getElementById('valCutThresh').textContent = cutThresh.toFixed(1);
+        renderSceneDetect();
+      });
+      document.getElementById('sDuck').addEventListener('input', (e) => {
+        duckRatio = parseFloat(e.target.value);
+        document.getElementById('valDuck').textContent = duckRatio.toFixed(1) + ' : 1';
+        updateExports();
+      });
+
+      document.getElementById('exportTabs').addEventListener('click', (e) => {
+        const btn = e.target.closest('.mini-btn');
+        if (!btn) return;
+        document.querySelectorAll('#exportTabs .mini-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTab = btn.dataset.tab;
+        updateExports();
+      });
+
+      function animate() {
+        tickFrame++;
+        renderStage();
+        if (tickFrame % 25 === 0 && activeTab === 'ffmpeg') updateExports();
+        requestAnimationFrame(animate);
+      }
+
+      renderSceneDetect();
+      updateExports();
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>

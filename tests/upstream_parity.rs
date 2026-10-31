@@ -4,6 +4,7 @@ use opensource_clipping::{
     framing::{CropWindow, FaceTrackerSmoother, FramingEngine},
     metadata::MetadataGenerator,
     render::{RenderClipOptions, RenderPipeline},
+    scenedetect::{FrameHistogram, SceneDetector},
     story::StoryEngine,
     subtitles::{SubtitleEngine, SubtitleStyle},
     teaser::{TeaserConfig, TeaserEngine},
@@ -287,22 +288,54 @@ fn test_upstream_social_media_metadata() {
 
 #[test]
 fn test_upstream_ffmpeg_render_pipeline() {
-    let mut opts = RenderClipOptions::default();
-    opts.input_path = PathBuf::from("video.mp4");
-    opts.output_path = PathBuf::from("short.mp4");
-    opts.start_time = 10.0;
-    opts.end_time = 30.0;
-    opts.crop = Some(CropWindow { x: 656, y: 0, width: 608, height: 1080 });
-    opts.ass_subtitles_path = Some(PathBuf::from("subtitles.ass"));
-    opts.watermark = Some(Watermark::new_text("@calljacob", WatermarkPosition::TopRight));
+    let opts = RenderClipOptions {
+        input_path: PathBuf::from("video.mp4"),
+        output_path: PathBuf::from("short.mp4"),
+        start_time: 10.0,
+        end_time: 30.0,
+        crop: Some(CropWindow {
+            x: 656,
+            y: 0,
+            width: 608,
+            height: 1080,
+        }),
+        ass_subtitles_path: Some(PathBuf::from("subtitles.ass")),
+        watermark: Some(Watermark::new_text(
+            "@calljacob",
+            WatermarkPosition::TopRight,
+        )),
+        ..RenderClipOptions::default()
+    };
 
     let cmd = RenderPipeline::build_ffmpeg_command(&opts).unwrap();
     assert_eq!(cmd[0], "ffmpeg");
-    assert!(cmd.iter().any(|c| c == "-ss" ));
-    assert!(cmd.iter().any(|c| c == "10.000" ));
-    assert!(cmd.iter().any(|c| c == "-to" ));
-    assert!(cmd.iter().any(|c| c == "30.000" ));
-    assert!(cmd.iter().any(|c| c.contains("crop=608:1080:656:0") ));
-    assert!(cmd.iter().any(|c| c.contains("subtitles='subtitles.ass'") ));
-    assert!(cmd.iter().any(|c| c.contains("drawtext=text='@calljacob'") ));
+    assert!(cmd.iter().any(|c| c == "-ss"));
+    assert!(cmd.iter().any(|c| c == "10.000"));
+    assert!(cmd.iter().any(|c| c == "-to"));
+    assert!(cmd.iter().any(|c| c == "30.000"));
+    assert!(cmd.iter().any(|c| c.contains("crop=608:1080:656:0")));
+    assert!(cmd.iter().any(|c| c.contains("subtitles='subtitles.ass'")));
+    assert!(cmd.iter().any(|c| c.contains("drawtext=text='@calljacob'")));
+}
+
+#[test]
+fn test_upstream_scenedetect_and_matchcut_similarity() {
+    let shot_a = [240u8, 30, 30].repeat(64);
+    let shot_b = [20u8, 40, 230].repeat(64);
+    let black = [0u8, 0, 0].repeat(64);
+
+    let h_a1 = FrameHistogram::from_rgb24(0, 0.0, &shot_a);
+    let h_a2 = FrameHistogram::from_rgb24(1, 0.033, &shot_a);
+    let h_b1 = FrameHistogram::from_rgb24(2, 0.066, &shot_b);
+    let h_blk = FrameHistogram::from_rgb24(3, 0.100, &black);
+
+    assert!(h_a1.cosine_similarity(&h_a2) > 0.99);
+    assert!(h_a1.cosine_similarity(&h_b1) < 0.25);
+
+    let cuts = SceneDetector::detect_content_cuts(&[h_a1, h_a2, h_b1.clone(), h_blk.clone()], 30.0, 1);
+    assert!(!cuts.is_empty());
+
+    let fades = SceneDetector::detect_luma_fades(&[h_b1, h_blk], 12.0);
+    assert_eq!(fades.len(), 1);
+    assert_eq!(fades[0].detector_kind, "fade_out");
 }

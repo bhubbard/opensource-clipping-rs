@@ -157,9 +157,16 @@ mod tests {
 
     #[test]
     fn test_build_ffmpeg_command() {
-        let mut opts = RenderClipOptions::default();
-        opts.crop = Some(CropWindow { x: 656, y: 0, width: 608, height: 1080 });
-        opts.ass_subtitles_path = Some(PathBuf::from("subs.ass"));
+        let opts = RenderClipOptions {
+            crop: Some(CropWindow {
+                x: 656,
+                y: 0,
+                width: 608,
+                height: 1080,
+            }),
+            ass_subtitles_path: Some(PathBuf::from("subs.ass")),
+            ..RenderClipOptions::default()
+        };
 
         let cmd = RenderPipeline::build_ffmpeg_command(&opts).unwrap();
         assert_eq!(cmd[0], "ffmpeg");
